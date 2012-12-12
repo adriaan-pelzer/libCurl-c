@@ -1,4 +1,4 @@
-CFLAGS=-Wall -I/usr/include/curl/
+CFLAGS=-g -Wall -I/usr/include/curl/
 LIBS=-L/usr/local/lib -lcurl
 
 all: libCurl
