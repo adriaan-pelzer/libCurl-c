@@ -107,7 +107,6 @@ int curl_connect(const char *url, connectionType ctype, const char *postargs, vo
     int rc = -1;
     CURLcode cr = CURLE_FAILED_INIT;
     long int http_code = 0;
-    char *http_url = NULL;
     struct MemoryStruct *mem = NULL;
 
     DOA("create new curl context", createMemoryStruct, mem, NULL);
