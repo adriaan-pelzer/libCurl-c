@@ -34,5 +34,6 @@ struct MemoryStruct *createMemoryStruct();
 int setConnectionParms(struct MemoryStruct *mem, const char *url, connectionType ctype, const char *postargs, void *uCtx, int (*rCB)(void *, const char *, const size_t), int (*sCB)(void *, char **, size_t *));
 void freeMemoryStruct(struct MemoryStruct *mem);
 int curl_connect(const char *url, connectionType ctype, const char *postargs, void *uCtx, int (*rCB)(void *, const char *, const size_t), int (*sCB)(void *, char **, size_t *));
+char *curl_connect_return_url(const char *url, connectionType ctype, const char *postargs, void *uCtx, int (*rCB)(void *, const char *, const size_t), int (*sCB)(void *, char **, size_t *));
 
 #endif

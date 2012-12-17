@@ -107,6 +107,7 @@ int curl_connect(const char *url, connectionType ctype, const char *postargs, vo
     int rc = -1;
     CURLcode cr = CURLE_FAILED_INIT;
     long int http_code = 0;
+    char *http_url = NULL;
     struct MemoryStruct *mem = NULL;
 
     DOA("create new curl context", createMemoryStruct, mem, NULL);
@@ -134,6 +135,46 @@ int curl_connect(const char *url, connectionType ctype, const char *postargs, vo
 
     rc = 0;
 over:
+    FF(mem, freeMemoryStruct);
+    return rc;
+}
+
+char *curl_connect_return_url(const char *url, connectionType ctype, const char *postargs, void *uCtx, int (*rCB)(void *, const char *, const size_t), int (*sCB)(void *, char **, size_t *)) {
+    char *rc = NULL, *_rc = NULL;
+    CURLcode cr = CURLE_FAILED_INIT;
+    long int http_code = 0;
+    char *http_url = NULL;
+    struct MemoryStruct *mem = NULL;
+
+    DOA("create new curl context", createMemoryStruct, mem, NULL);
+    DONT("set connection parameters", setConnectionParms, 0, mem, url, ctype, postargs, uCtx, rCB, sCB);
+    DONT("init curl", curl_init_if_not_init, 0, mem);
+    DONT("set curl options", curl_setopts, 0, mem);
+
+    if ((cr = curl_easy_perform(mem->curl_handle)) != CURLE_OK) {
+        syslog(P_ERR, "Cannot perform curl transaction: %s", curl_easy_strerror(cr));
+        goto over;
+    }
+
+    DONT("extract HTTP code from curl handle", curl_easy_getinfo, CURLE_OK, mem->curl_handle, CURLINFO_RESPONSE_CODE, &http_code);
+
+    syslog (P_DBG, "HTTP code returned: %ld", http_code);
+
+    if (http_code == 200) {
+        DONT("extract effective URL from curl handle", curl_easy_getinfo, CURLE_OK, mem->curl_handle, CURLINFO_EFFECTIVE_URL, &http_url);
+        DOA("allcate memory for effective URL", strdup, _rc, NULL, http_url);
+
+        if (mem->returnCB) {
+            DONT("call return callback function", mem->returnCB, 0, mem->uCtx, (const char *) mem->memory, (const size_t) mem->size);
+        }
+    } else {
+        syslog(P_ERR, "URL '%s' returned HTTP code %ld", mem->url, http_code);
+        goto over;
+    }
+
+    rc = _rc;
+over:
+    FFF(_rc, free, _rc && (rc == NULL));
     FF(mem, freeMemoryStruct);
     return rc;
 }
