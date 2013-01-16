@@ -134,6 +134,9 @@ int curl_connect(const char *url, connectionType ctype, const char *postargs, vo
 
     rc = 0;
 over:
+    if ((rc == -1) && (cr != CURLE_OK)) {
+        rc = (int) cr;
+    }
     FF(mem, freeMemoryStruct);
     return rc;
 }
