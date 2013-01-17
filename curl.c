@@ -1,6 +1,19 @@
 #include "addr.h"
 #include "curl.h"
 
+int ProgressCallback(void *data, double dltotal, double dlnow, double ultotal, double ulnow) {
+    size_t rc = -1;
+    struct MemoryStruct *mem = (struct MemoryStruct *) data;
+
+    if (mem->progressCB) {
+        DONT("call progress callback function", mem->progressCB, 0, mem->uCtx, dltotal, dlnow, ultotal, ulnow);
+    }
+
+    rc = 0;
+over:
+    return rc;
+}
+
 size_t WriteMemoryCallback(void *ptr, size_t size, size_t nmemb, void *data) {
     size_t rc = -1;
     size_t realsize = size * nmemb;
@@ -42,6 +55,9 @@ int curl_setopts(struct MemoryStruct *mem) {
     SETOPT(CURLOPT_FAILONERROR, 1);
     SETOPT(CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
     SETOPT(CURLOPT_WRITEDATA, (void *) mem);
+    SETOPT(CURLOPT_NOPROGRESS, 0);
+    SETOPT(CURLOPT_PROGRESSFUNCTION, ProgressCallback);
+    SETOPT(CURLOPT_PORGRESSDATA, (void *) mem);
     SETOPT(CURLOPT_USERAGENT, "curl/7.26.0");
     SETOPT(CURLOPT_NOSIGNAL, 1);
     SETOPT(CURLOPT_FOLLOWLOCATION, 1);
@@ -85,7 +101,7 @@ over:
     return mem;
 }
 
-int setConnectionParms(struct MemoryStruct *mem, const char *url, connectionType ctype, const char *postargs, void *uCtx, int (*rCB)(void *, const char *, const size_t), int (*sCB)(void *, char **, size_t *)) {
+int setConnectionParms(struct MemoryStruct *mem, const char *url, connectionType ctype, const char *postargs, void *uCtx, int (*rCB)(void *, const char *, const size_t), int (*sCB)(void *, char **, size_t *), int (*pCB)(void *, double, double, double, double)) {
     int rc = -1;
 
     if (url == NULL) { syslog(P_ERR, "Cannot connect to empty URL"); goto over; }
@@ -96,6 +112,7 @@ int setConnectionParms(struct MemoryStruct *mem, const char *url, connectionType
     mem->url = (char *) url;
     mem->streamCB = sCB;
     mem->returnCB = rCB;
+    mem->progressCB = pCB;
     mem->uCtx = uCtx;
 
     rc = 0;
@@ -110,7 +127,45 @@ int curl_connect(const char *url, connectionType ctype, const char *postargs, vo
     struct MemoryStruct *mem = NULL;
 
     DOA("create new curl context", createMemoryStruct, mem, NULL);
-    DONT("set connection parameters", setConnectionParms, 0, mem, url, ctype, postargs, uCtx, rCB, sCB);
+    DONT("set connection parameters", setConnectionParms, 0, mem, url, ctype, postargs, uCtx, rCB, sCB, NULL);
+    DONT("init curl", curl_init_if_not_init, 0, mem);
+    DONT("set curl options", curl_setopts, 0, mem);
+
+    if ((cr = curl_easy_perform(mem->curl_handle)) != CURLE_OK) {
+        syslog(P_ERR, "Cannot perform curl transaction: %s", curl_easy_strerror(cr));
+        goto over;
+    }
+
+    DONT("extract HTTP code from curl handle", curl_easy_getinfo, CURLE_OK, mem->curl_handle, CURLINFO_RESPONSE_CODE, &http_code);
+
+    syslog (P_DBG, "HTTP code returned: %ld", http_code);
+
+    if (http_code == 200) {
+        if (mem->returnCB) {
+            DONT("call return callback function", mem->returnCB, 0, mem->uCtx, (const char *) mem->memory, (const size_t) mem->size);
+        }
+    } else {
+        syslog(P_ERR, "URL '%s' returned HTTP code %ld", mem->url, http_code);
+        goto over;
+    }
+
+    rc = 0;
+over:
+    if ((rc == -1) && (cr != CURLE_OK)) {
+        rc = (int) cr;
+    }
+    FF(mem, freeMemoryStruct);
+    return rc;
+}
+
+int curl_connect_progress(const char *url, connectionType ctype, const char *postargs, void *uCtx, int (*rCB)(void *, const char *, const size_t), int (*sCB)(void *, char **, size_t *), int (*pCB)(void *, double, double, double, double)) {
+    int rc = -1;
+    CURLcode cr = CURLE_FAILED_INIT;
+    long int http_code = 0;
+    struct MemoryStruct *mem = NULL;
+
+    DOA("create new curl context", createMemoryStruct, mem, NULL);
+    DONT("set connection parameters", setConnectionParms, 0, mem, url, ctype, postargs, uCtx, rCB, sCB, pCB);
     DONT("init curl", curl_init_if_not_init, 0, mem);
     DONT("set curl options", curl_setopts, 0, mem);
 
