@@ -25,6 +25,7 @@ struct MemoryStruct {
     char *postargs;
     int (*streamCB)(void *uCtx, char **, size_t *);
     int (*returnCB)(void *uCtx, const char *, const size_t);
+    int (*progressCB)(void *uCtx, double, double, double, double);
     void *uCtx;
     char *memory;
     size_t size;
