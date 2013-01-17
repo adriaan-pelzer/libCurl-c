@@ -32,9 +32,10 @@ struct MemoryStruct {
 };
 
 struct MemoryStruct *createMemoryStruct();
-int setConnectionParms(struct MemoryStruct *mem, const char *url, connectionType ctype, const char *postargs, void *uCtx, int (*rCB)(void *, const char *, const size_t), int (*sCB)(void *, char **, size_t *));
+int setConnectionParms(struct MemoryStruct *mem, const char *url, connectionType ctype, const char *postargs, void *uCtx, int (*rCB)(void *, const char *, const size_t), int (*sCB)(void *, char **, size_t *), int (*pCB)(void *, double, double, double, double));
 void freeMemoryStruct(struct MemoryStruct *mem);
 int curl_connect(const char *url, connectionType ctype, const char *postargs, void *uCtx, int (*rCB)(void *, const char *, const size_t), int (*sCB)(void *, char **, size_t *));
+int curl_connect_progress(const char *url, connectionType ctype, const char *postargs, void *uCtx, int (*rCB)(void *, const char *, const size_t), int (*sCB)(void *, char **, size_t *), int (*pCB)(void *, double, double, double, double));
 char *curl_connect_return_url(const char *url, connectionType ctype, const char *postargs, void *uCtx, int (*rCB)(void *, const char *, const size_t), int (*sCB)(void *, char **, size_t *));
 
 #endif
