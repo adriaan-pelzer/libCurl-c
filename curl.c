@@ -204,7 +204,7 @@ char *curl_connect_return_url(const char *url, connectionType ctype, const char 
     struct MemoryStruct *mem = NULL;
 
     DOA("create new curl context", createMemoryStruct, mem, NULL);
-    DONT("set connection parameters", setConnectionParms, 0, mem, url, ctype, postargs, uCtx, rCB, sCB);
+    DONT("set connection parameters", setConnectionParms, 0, mem, url, ctype, postargs, uCtx, rCB, sCB, NULL);
     DONT("init curl", curl_init_if_not_init, 0, mem);
     DONT("set curl options", curl_setopts, 0, mem);
 
